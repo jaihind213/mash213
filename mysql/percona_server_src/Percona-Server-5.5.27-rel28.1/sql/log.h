@@ -586,7 +586,7 @@ public:
 
   // iterating through the log index file
   int find_log_pos(LOG_INFO* linfo, const char* log_name,
-		   bool need_mutex);
+		   bool need_mutex, ushort is_request_relay_log=0);
   int find_next_log(LOG_INFO* linfo, bool need_mutex);
   int get_current_log(LOG_INFO* linfo);
   int raw_get_current_log(LOG_INFO* linfo);

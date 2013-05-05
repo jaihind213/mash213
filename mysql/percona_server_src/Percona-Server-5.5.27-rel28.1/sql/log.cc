@@ -3334,7 +3334,7 @@ err:
 */
 
 int MYSQL_BIN_LOG::find_log_pos(LOG_INFO *linfo, const char *log_name,
-			    bool need_lock)
+			    bool need_lock, ushort is_request_relay_log)
 {
   int error= 0;
   char *full_fname= linfo->log_file_name;
@@ -3350,17 +3350,16 @@ int MYSQL_BIN_LOG::find_log_pos(LOG_INFO *linfo, const char *log_name,
   if (need_lock)
     mysql_mutex_lock(&LOCK_index);
   mysql_mutex_assert_owner(&LOCK_index);
-
   // extend relative paths for log_name to be searched
   if (log_name)
   {
-    if(normalize_binlog_name(full_log_name, log_name, is_relay_log))
+    if(normalize_binlog_name(full_log_name, log_name, is_relay_log | is_request_relay_log ))
     {
       error= LOG_INFO_EOF;
       goto end;
     }
   }
-
+ 
   log_name_len= log_name ? (uint) strlen(full_log_name) : 0;
   DBUG_PRINT("enter", ("log_name: %s, full_log_name: %s", 
                        log_name ? log_name : "NULL", full_log_name));
@@ -3384,13 +3383,12 @@ int MYSQL_BIN_LOG::find_log_pos(LOG_INFO *linfo, const char *log_name,
     }
 
     // extend relative paths and match against full path
-    if (normalize_binlog_name(full_fname, fname, is_relay_log))
+    if (normalize_binlog_name(full_fname, fname, is_relay_log | is_request_relay_log))
     {
       error= LOG_INFO_EOF;
       break;
     }
     fname_len= (uint) strlen(full_fname);
-
     // if the log entry matches, null string matching anything
     if (!log_name ||
 	(log_name_len == fname_len-1 && full_fname[log_name_len] == '\n' &&

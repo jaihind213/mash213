@@ -434,11 +434,20 @@ static int send_heartbeat_event(NET* net, String* packet,
 */
 
 void mysql_binlog_send(THD* thd, char* log_ident, my_off_t pos,
-		       ushort flags)
+		       ushort flags, ushort is_request_relay_log)
 {
   LOG_INFO linfo;
   char *log_file_name = linfo.log_file_name;
   char search_file_name[FN_REFLEN], *name;
+
+  ///set pointer according to request, i.e. request for relay or bin log.
+  MYSQL_BIN_LOG *replication_log;   //pointer to either a relay_log or bin_log
+  replication_log = &(mysql_bin_log);
+  if(is_request_relay_log)
+  {
+     replication_log = &(active_mi->rli.relay_log);
+  }
+  ///set pointer according to request, i.e. request for relay or bin log.
 
   ulong ev_offset;
 
@@ -495,7 +504,7 @@ void mysql_binlog_send(THD* thd, char* log_ident, my_off_t pos,
   }
 #endif
 
-  if (!mysql_bin_log.is_open())
+  if (!replication_log->is_open())
   {
     errmsg = "Binary log is not open";
     my_errno= ER_MASTER_FATAL_ERROR_READING_BINLOG;
@@ -510,13 +519,13 @@ void mysql_binlog_send(THD* thd, char* log_ident, my_off_t pos,
 
   name=search_file_name;
   if (log_ident[0])
-    mysql_bin_log.make_log_name(search_file_name, log_ident);
+    replication_log->make_log_name(search_file_name, log_ident);
   else
     name=0;					// Find first log
 
   linfo.index_file_offset = 0;
 
-  if (mysql_bin_log.find_log_pos(&linfo, name, 1))
+  if (replication_log->find_log_pos(&linfo, name, 1, is_request_relay_log))
   {
     errmsg = "Could not find first log file name in binary log index file";
     my_errno= ER_MASTER_FATAL_ERROR_READING_BINLOG;
@@ -596,8 +605,8 @@ impossible position";
     only at shutdown).
   */
   p_coord->pos= pos; // the first hb matches the slave's last seen value
-  log_lock= mysql_bin_log.get_log_lock();
-  log_cond= mysql_bin_log.get_log_cond();
+  log_lock= replication_log->get_log_lock();
+  log_cond= replication_log->get_log_cond();
   if (pos > BIN_LOG_HEADER_SIZE)
   {
     /* reset transmit packet for the event read from binary log
@@ -797,7 +806,7 @@ impossible position";
       goto err;
 
     if (!(flags & BINLOG_DUMP_NON_BLOCK) &&
-        mysql_bin_log.is_active(log_file_name))
+        replication_log->is_active(log_file_name))
     {
       /*
 	Block until there is more data in the log
@@ -868,7 +877,7 @@ impossible position";
           ulong hb_info_counter= 0;
 #endif
           const char* old_msg= thd->proc_info;
-          signal_cnt= mysql_bin_log.signal_cnt;
+          signal_cnt= replication_log->signal_cnt;
           do 
           {
             if (heartbeat_period != 0)
@@ -879,7 +888,7 @@ impossible position";
             thd->enter_cond(log_cond, log_lock,
                             "Master has sent all binlog to slave; "
                             "waiting for binlog to be updated");
-            ret= mysql_bin_log.wait_for_update_bin_log(thd, heartbeat_ts);
+            ret= replication_log->wait_for_update_bin_log(thd, heartbeat_ts);
             DBUG_ASSERT(ret == 0 || (heartbeat_period != 0));
             if (ret == ETIMEDOUT || ret == ETIME)
             {
@@ -910,7 +919,7 @@ impossible position";
             {
               DBUG_PRINT("wait",("binary log received update or a broadcast signal caught"));
             }
-          } while (signal_cnt == mysql_bin_log.signal_cnt && !thd->killed);
+          } while (signal_cnt == replication_log->signal_cnt && !thd->killed);
           thd->exit_cond(old_msg);
         }
         break;
@@ -967,11 +976,11 @@ impossible position";
       /* need this to break out of the for loop from switch */
 
       thd_proc_info(thd, "Finished reading one binlog; switching to next binlog");
-      switch (mysql_bin_log.find_next_log(&linfo, 1)) {
+      switch (replication_log->find_next_log(&linfo, 1)) {
       case 0:
 	break;
       case LOG_INFO_EOF:
-        if (mysql_bin_log.is_active(log_file_name))
+        if (replication_log->is_active(log_file_name))
         {
           loop_breaker = (flags & BINLOG_DUMP_NON_BLOCK);
           break;

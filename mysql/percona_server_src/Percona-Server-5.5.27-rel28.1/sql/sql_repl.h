@@ -63,7 +63,7 @@ typedef struct st_load_file_info
 
 int log_loaded_block(IO_CACHE* file);
 int init_replication_sys_vars();
-void mysql_binlog_send(THD* thd, char* log_ident, my_off_t pos, ushort flags);
+void mysql_binlog_send(THD* thd, char* log_ident, my_off_t pos, ushort flags, ushort is_request_relay_log=0);
 
 #endif /* HAVE_REPLICATION */
 

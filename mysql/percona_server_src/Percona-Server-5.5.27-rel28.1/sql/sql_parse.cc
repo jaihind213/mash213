@@ -153,6 +153,7 @@ const LEX_STRING command_name[]={
   { C_STRING_WITH_LEN("Set option") },
   { C_STRING_WITH_LEN("Fetch") },
   { C_STRING_WITH_LEN("Daemon") },
+  { C_STRING_WITH_LEN("Relaylog Dump") },
   { C_STRING_WITH_LEN("Error") }  // Last command number
 };
 
@@ -1239,6 +1240,34 @@ bool dispatch_command(enum enum_server_command command, THD *thd,
       general_log_print(thd, command, "Log: '%s'  Pos: %ld", packet+10,
                       (long) pos);
       mysql_binlog_send(thd, thd->strdup(packet + 10), (my_off_t) pos, flags);
+      unregister_slave(thd,1,1);
+      /*  fake COM_QUIT -- if we get here, the thread needs to terminate */
+      error = TRUE;
+      break;
+    }
+  case COM_RELAYLOG_DUMP:
+    {
+      fprintf(stderr, "Received request for Relay Log [COM_RELAYLOG_DUMP EVENT]\n");
+      ulong pos;
+      ushort flags;
+      uint32 slave_server_id;
+
+      status_var_increment(thd->status_var.com_other);
+      thd->enable_slow_log= opt_log_slow_admin_statements;
+      if (check_global_access(thd, REPL_SLAVE_ACL))
+	break;
+
+      /* TODO: The following has to be changed to an 8 byte integer */
+      pos = uint4korr(packet);
+      flags = uint2korr(packet + 4);
+      thd->server_id=0; /* avoid suicide */
+      if ((slave_server_id= uint4korr(packet+6))) // mysqlbinlog.server_id==0
+	kill_zombie_dump_threads(slave_server_id);
+      thd->server_id = slave_server_id;
+
+      general_log_print(thd, command, "Log: '%s'  Pos: %ld", packet+10,
+                      (long) pos);
+      mysql_binlog_send(thd, thd->strdup(packet + 10), (my_off_t) pos, flags, 1);
       unregister_slave(thd,1,1);
       /*  fake COM_QUIT -- if we get here, the thread needs to terminate */
       error = TRUE;
