@@ -1,0 +1,43 @@
+=====================================================
+Assuming code has been checked out to location '/code'
+=====================================================
+
+cd /code/mash213/mysql/percona_server_src/Percona-Server-5.5.27-rel28.1
+cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_CONFIG=mysql_release -DFEATURE_SET=community -DWITH_EMBEDDED_SERVER=OFF
+make
+make install
+
+
+If Make Fails
+----------
+If 'make' Fails with error: 'make: *** [all] Error 2'
+
+     "In file included from /code/mash213/mysql/percona_server_src/Percona-Server-5.5.27-rel28.1/plugin/percona-pam-for-mysql/src/auth_pam_common.c:22 "
+     ....
+     ....
+
+simply remove the directory 'Percona-Server-5.5.27-rel28.1/plugin/percona-pam-for-mysql'
+and do 'make' again.
+
+Creating MySQL Sandbox from this source code:
+---------------------------------------
+
+(0) install MySQL sandbox from 'http://mysqlsandbox.net'
+
+Assuming code has been checked out to location '/code'
+ 
+Steps as follows:
+
+(1) make_sandbox_from_source /code/mash213/mysql/percona_server_src/Percona-Server-5.5.27-rel28.1 replication --how_many_slaves=1
+[Please make sure that you do 'cmake and make' before running step 1]   
+
+(1.1) you might get the error 'can't find a version in Makefile'
+
+(2) edit /code/mash213/mysql/percona_server_src/Percona-Server-5.5.27-rel28.1/Makefile 
+    and add the following 'MYSQL_NO_DASH_VERSION=5.5.27' 
+
+references:
+-----------
+http://www.percona.com/doc/percona-server/5.5/installation.html#installing-percona-server-from-a-source-tarball
+http://mysqlsandbox.net/
+https://bugs.launchpad.net/mysql-sandbox/+bug/853764

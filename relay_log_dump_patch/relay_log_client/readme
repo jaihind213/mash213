@@ -1,0 +1,37 @@
+This client has been taken from 
+tungsten-replicator-2.0.6
+
+How to run:
+-----------
+
+(0) log in to mysql master and execute 'grant all on *.* to 'tungsten'@localhost identified by 'secret' with grant option' && 'flush privileges' 
+(1) cd lib
+
+(2)
+java -classpath tungsten-replicator.jar:tungsten-common.jar:tungsten-fsm.jar:drizzle-jdbc-1.2-SNAPSHOT.jar:log4j-1.2.16.jar:commons-logging-1.1.1.jar:.:../conf   com.continuent.tungsten.replicator.extractor.mysql.RelayLogClient  -login tungsten -password secret -url jdbc:mysql:thin://localhost:21983/ -offset 253  -binlog mysql_sandbox21983-relay-bin.000011
+
+Note:
+----
+I downloaded tungsten replication 2.0.6 source code, modified the class 'com.continuent.tungsten.replicator.extractor.mysql.RelayLogClient', and the compiled class is available directly in lib directly.
+
+The source code of the class 'com.continuent.tungsten.replicator.extractor.mysql.RelayLogClient' is also available here.
+refer to the method
+
+	private void sendBinlogDumpPacket(OutputStream out) throws IOException
+	{
+        	MySQLPacket packet = new MySQLPacket(200, (byte) 0);
+        	//packet.putByte((byte) MySQLConstants.COM_BINLOG_DUMP);
+        	packet.putByte((byte) 30); // 30 is for COM_RELAYLOG_DUMP
+        	packet.putInt32((int) offset);
+        	packet.putInt16(0);
+        	packet.putInt32(serverId);
+        	if (binlog != null)
+            	packet.putString(binlog);
+        	packet.write(out);
+        	out.flush();
+	}
+
+references:
+----------
+http://code.google.com/p/tungsten-replicator/downloads/list
+http://code.google.com/p/tungsten-replicator/downloads/detail?name=tungsten-replicator-2.0.6-src.tar.gz&can=2&q=

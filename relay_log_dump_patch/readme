@@ -2,6 +2,8 @@ This patch allows a client to request Relay Log dump from the server.
 
 the git difference is between 60100a2b70c386dd109b97aded9ead924747fdd4  and  0e9cfe3762371cc31772782f9335814b9d38e437
 
+There is a client for testing this patch available in the 'relay_log_client' directory
+
 Note:
 ----
 Since the server automatically deletes relay log when the changes have been applied. 
